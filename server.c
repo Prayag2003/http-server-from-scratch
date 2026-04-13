@@ -15,7 +15,7 @@ ssize_t handle_client_connection(int client_socket)
     ssize_t n = 0;
     char buffer[4096];
     // Request line - CRLF - Entity Body - CRLF
-    const char *response_from_server = "HTTP/1.0 200 OK\r\n\r\nHello, World!";
+    const char *response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>";
 
     for (;;)
     {
