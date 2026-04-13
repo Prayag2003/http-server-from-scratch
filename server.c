@@ -14,6 +14,8 @@ ssize_t handle_client_connection(int client_socket)
 {
     ssize_t n = 0;
     char buffer[4096];
+    // Request line - CRLF - Entity Body - CRLF
+    const char *response_from_server = "HTTP/1.0 200 OK\r\n\r\nHello, World!";
 
     for (;;)
     {
@@ -33,8 +35,12 @@ ssize_t handle_client_connection(int client_socket)
         }
         printf(" - - - - - - - - - - - - - - - - - - - -\n");
         printf("Buffer => %s\n", buffer);
-        printf(" - - - - - - - - - - - - - - - - - - - -\n");
+
+        (void)write(client_socket, response_from_server, strlen(response_from_server));
+        close(client_socket);
+        break;
     }
+    printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
     return 0;
 }
