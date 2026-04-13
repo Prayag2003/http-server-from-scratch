@@ -10,6 +10,7 @@ int main()
     int rc = 0;
     int tcp_socket = 0;
     int ls = 0;
+    int client_socket = 0;
     struct sockaddr_in bind_addr;
 
     /* initialization */
@@ -54,8 +55,20 @@ int main()
         ret = 1;
         goto exit;
     }
-
     printf("Listener succeeded\n");
+
+    for (;;)
+    {
+        printf("Waiting for connection\n");
+        client_socket = accept(tcp_socket, NULL, NULL);
+        if (client_socket < 0)
+        {
+            perror("Failed to create the client connection\n");
+            ret = 1;
+            goto exit;
+        }
+        printf("Received a connection %d\n", client_socket);
+    }
 
 exit:
     close(tcp_socket);
