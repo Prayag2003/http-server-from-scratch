@@ -51,6 +51,7 @@ int main()
     int ls = 0;
     int client_socket = 0;
     struct sockaddr_in bind_addr;
+    int optionsEnabled = 1;
 
     memset(&bind_addr, 0, sizeof(bind_addr));
 
@@ -64,6 +65,8 @@ int main()
     }
 
     printf("Socket created successfully, fd = %d\n", tcp_socket);
+
+    (void)setsockopt(tcp_socket, SOL_SOCKET, SO_REUSEADDR, &optionsEnabled, sizeof(optionsEnabled));
 
     /* Configure socket address for binding to port 8000 */
     bind_addr.sin_family = AF_INET;         /* IPv4 */
