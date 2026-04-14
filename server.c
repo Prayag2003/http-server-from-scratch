@@ -73,7 +73,12 @@ ssize_t handle_client_connection(int client_socket)
 
         string route_hello = string_from_cstr("/hello");
         string route_goodbye = string_from_cstr("/goodbye");
-        if (strings_equal(req_line.uri, route_hello))
+        string home = string_from_cstr("/");
+        if (strings_equal(req_line.uri, home))
+        {
+            response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Home</h1>";
+        }
+        else if (strings_equal(req_line.uri, route_hello))
         {
             response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>";
         }
