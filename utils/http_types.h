@@ -11,12 +11,34 @@ typedef struct
     string version;
 } http_req_line;
 
-typedef enum
+typedef enum http_status : uint16_t
 {
     HTTP_RES_OK = 200,
     HTTP_RES_INTERNAL_SERVER_ERR = 500,
     HTTP_RES_BAD_REQUEST = 400,
+} http_status;
+
+typedef struct
+{
+    const char *version;
+    http_status status_code;
+    const char *reason;
 } http_result;
+
+const char *http_status_to_str(http_status status)
+{
+    switch (status)
+    {
+    case HTTP_RES_OK:
+        return "OK";
+    case HTTP_RES_INTERNAL_SERVER_ERR:
+        return "Internal Server Error";
+    case HTTP_RES_BAD_REQUEST:
+        return "Bad Request";
+    default:
+        return "Unknown Status";
+    }
+}
 
 /**
  * Initialize an HTTP request line structure
@@ -31,7 +53,7 @@ http_req_line http_req_line_init()
 /**
  * Parse HTTP request line from a buffer
  */
-http_result parse_req_line(const char *buf, size_t len, http_req_line *req_line)
+http_status parse_req_line(const char *buf, size_t len, http_req_line *req_line)
 {
     if (!buf || !req_line)
     {
