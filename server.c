@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include "string_ops.h"
-#include "http_types.h"
+#include "utils/string_ops.h"
+#include "utils/http_types.h"
 
 const char *CRLF = "\r\n";
 const char SPACE = ' ';
