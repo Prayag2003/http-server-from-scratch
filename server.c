@@ -64,7 +64,7 @@ ssize_t handle_client_connection(int client_socket)
         }
 
         http_req_line req_line = http_req_line_init();
-        http_result result = parse_req_line(buffer, req_line_len, &req_line);
+        http_status result = parse_req_line(buffer, req_line_len, &req_line);
         if (result != HTTP_RES_OK)
         {
             printf("Failed to parse request line\n");
