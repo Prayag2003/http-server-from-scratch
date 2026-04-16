@@ -3,13 +3,6 @@
 
 #include "http_common.h"
 
-typedef struct
-{
-    const char *version;
-    http_status status_code;
-    const char *reason;
-} http_result;
-
 const char *http_status_to_str(http_status status)
 {
     switch (status)

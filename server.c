@@ -8,8 +8,8 @@
 #include "utils/string_ops.h"
 #include "utils/http_types.h"
 
-const char *CRLF = "\r\n";
-const char SPACE = ' ';
+#define CRLF "\r\n"
+#define SPACE " "
 
 /**
  * handle_client_connection: Process incoming client connection
@@ -21,6 +21,7 @@ ssize_t handle_client_connection(int client_socket)
     char buffer[4096];
     // Request line - CRLF - Entity Body - CRLF
     const char *response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>";
+    const char *response_404 = "HTTP/1.0 404 Not Found\r\n\r\n<h1>Not Found</h1>";
 
     for (;;)
     {
@@ -72,23 +73,14 @@ ssize_t handle_client_connection(int client_socket)
         }
 
         string route_hello = string_from_cstr("/hello");
-        string route_goodbye = string_from_cstr("/goodbye");
         string home = string_from_cstr("/");
         if (strings_equal(req_line.uri, home))
         {
-            response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Home</h1>";
-        }
-        else if (strings_equal(req_line.uri, route_hello))
-        {
             response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>";
-        }
-        else if (strings_equal(req_line.uri, route_goodbye))
-        {
-            response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Goodbye, World!</h1>";
         }
         else
         {
-            response_from_server = "HTTP/1.0 404 Not Found\r\n\r\n<h1>Not Found</h1>";
+            response_from_server = response_404;
         }
 
         (void)write(client_socket, response_from_server, strlen(response_from_server));
@@ -98,6 +90,17 @@ ssize_t handle_client_connection(int client_socket)
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
     return 0;
+}
+
+ssize_t http_response_generate(char *buf, size_t buf_len, http_status status, size_t body_len)
+{
+    int n = 0;
+    memset(buf, 0, sizeof(buf));
+
+    n = sprintf(buf, "%s %s %s" CRLF, "HTTP/1.0", status, http_status_to_str(status));
+    n = sprintf(buf + n, "Content-Length: %zu" CRLF, body_len);
+    n = sprintf(buf + n, CRLF);
+    return buf;
 }
 
 /**
