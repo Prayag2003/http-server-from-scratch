@@ -29,7 +29,7 @@ typedef struct
 /**
  * Compare two string structures for equality
  */
-bool strings_equal(string a, string b)
+static inline bool strings_equal(string a, string b)
 {
     if (a.len != b.len)
     {
@@ -41,7 +41,7 @@ bool strings_equal(string a, string b)
 /**
  * Create a string from a null-terminated C string
  */
-string string_from_cstr(const char *cstr)
+static inline string string_from_cstr(const char *cstr)
 {
     string result;
     result.data = cstr;
@@ -56,7 +56,6 @@ static string_splits split_string(const char *buf, size_t len, char split_by)
 {
     string_splits result;
     const char *start;
-    const char *end;
     size_t result_i = 0;
 
     result.capacity = 8;
