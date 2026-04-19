@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <utils/string_ops.h>
+#include "string_ops.h"
 #include <linux/limits.h>
 #include <sys/stat.h>
 
