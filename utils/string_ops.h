@@ -50,6 +50,17 @@ static inline string string_from_cstr(const char *cstr)
 }
 
 /**
+ * Convert a string to a string_view
+ */
+static inline string_view string_to_view(string s)
+{
+    string_view view;
+    view.start = s.data;
+    view.end = s.data + s.len;
+    return view;
+}
+
+/**
  * Split a buffer by a delimiter character
  */
 static string_splits split_string(const char *buf, size_t len, char split_by)
