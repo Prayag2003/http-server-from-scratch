@@ -5,18 +5,22 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <fcntl.h>
+#include <sys/sendfile.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <limits.h>
 #include "utils/string_ops.h"
 #include "utils/http_types.h"
 #include "utils/stat.h"
-#include <fcntl.h>
 
 #define CRLF "\r\n"
 #define SPACE " "
 
 bool http_serve_file(int client_socket, string filename)
 {
-    FILE *file;
-    char buf[PATH_MAX];
+    char file_buf[PATH_MAX];
+    char header_buf[PATH_MAX];
     string header;
     bool return_value = false;
     int in_fd = -1;
@@ -24,20 +28,22 @@ bool http_serve_file(int client_socket, string filename)
     fs_metadata metadata = fs_get_metadata(string_to_view(filename));
     if (!metadata.exists)
     {
+        memset(header_buf, 0, sizeof(header_buf));
         (void)http_send_response(
             client_socket,
-            http_response_generate(NULL, 0, HTTP_RES_NOT_FOUND, 0),
+            http_response_generate(header_buf, sizeof(header_buf), HTTP_RES_NOT_FOUND, strlen("Error 404: Not Found")),
             string_from_cstr("Error 404: Not Found"));
         return_value = true;
         goto cleanup;
     }
 
-    memset(buf, 0, sizeof(buf));
-    memcpy(buf, filename.data, filename.len);
+    memset(file_buf, 0, sizeof(file_buf));
+    memcpy(file_buf, filename.data, filename.len);
 
-    header = http_response_generate(buf, sizeof(buf), HTTP_RES_OK, metadata.file_size);
+    memset(header_buf, 0, sizeof(header_buf));
+    header = http_response_generate(header_buf, sizeof(header_buf), HTTP_RES_OK, metadata.file_size);
 
-    ssize_t n = send(socket, header.data, header.len, MSG_MORE);
+    ssize_t n = send(client_socket, header.data, header.len, MSG_MORE);
     if (n < 0)
     {
         perror("Failed to send response header\n");
@@ -51,12 +57,13 @@ bool http_serve_file(int client_socket, string filename)
         goto cleanup;
     }
 
-    in_fd = open(buf, O_RDONLY);
+    in_fd = open(file_buf, O_RDONLY);
     if (in_fd < 0)
     {
+        memset(header_buf, 0, sizeof(header_buf));
         http_send_response(
             client_socket,
-            http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
+            http_response_generate(header_buf, sizeof(header_buf), HTTP_RES_INTERNAL_SERVER_ERR, strlen("Error 500: Internal Server Error")),
             string_from_cstr("Error 500: Internal Server Error"));
         perror("Failed to open file for reading\n");
         goto cleanup;
@@ -71,10 +78,11 @@ bool http_serve_file(int client_socket, string filename)
         result = sendfile(client_socket, in_fd, NULL, metadata.file_size - sent);
         if (result < 0)
         {
-            printf("Failed to send file contents for %s\n", buf);
+            printf("Failed to send file contents for %s\n", file_buf);
+            memset(header_buf, 0, sizeof(header_buf));
             http_send_response(
                 client_socket,
-                http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
+                http_response_generate(header_buf, sizeof(header_buf), HTTP_RES_INTERNAL_SERVER_ERR, strlen("Error 500: Internal Server Error")),
                 string_from_cstr("Error 500: Internal Server Error"));
             return_value = false;
             goto cleanup;
@@ -83,7 +91,6 @@ bool http_serve_file(int client_socket, string filename)
     }
 
 cleanup:
-    close(file);
     if (in_fd != -1)
         close(in_fd);
     return return_value;
@@ -97,8 +104,6 @@ ssize_t handle_client_connection(int client_socket)
 {
     ssize_t n = 0;
     char buf[4096];
-    // Request line - CRLF - Entity Body - CRLF
-    string response_from_server = string_from_cstr("<h1>Hello, World!</h1>");
     string response_404 = string_from_cstr("<h1>404 Not Found!<h1>");
 
     for (;;)
@@ -150,12 +155,10 @@ ssize_t handle_client_connection(int client_socket)
             return -1;
         }
 
-        string route_hello = string_from_cstr("/hello");
         string root_route = string_from_cstr("/");
-
         if (strings_equal(req_line.uri, root_route))
         {
-            if (!http_serve_file(client_socket, string_from_cstr("index.html")))
+            if (!http_serve_file(client_socket, string_from_cstr("./www/index.html")))
             {
                 printf("Failed to serve index.html for route %.*s\n", (int)root_route.len, root_route.data);
                 return -1;
