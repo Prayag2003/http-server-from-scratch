@@ -105,12 +105,27 @@ HTTP/1.0 200 OK
 
 ```
 http-server/
-├── Makefile           # Build configuration
-├── README.md          # Project documentation
-├── server.c           # Main HTTP server implementation
-└── assets/
-    └── 00_server_responds_200.png  # Screenshot of server response
+├── Makefile                    # Build configuration and targets
+├── README.md                   # Project documentation
+├── server.c                    # Main HTTP server implementation
+├── assets/                     # Static assets
+│   └── 00_server_responds_200.png
+└── utils/                      # HTTP library utilities
+    ├── http_common.h           # Common HTTP types and enums
+    ├── http_request.h          # HTTP request parsing
+    ├── http_response.h         # HTTP response generation (header + declarations)
+    ├── http_response.c         # HTTP response implementation
+    ├── string_ops.h            # String manipulation utilities
+    └── http_types.h            # Convenience header including all types
 ```
+
+### Module Responsibilities
+
+- **server.c**: Main event loop, socket setup, client connection handling
+- **http_response.h/c**: Response header generation and socket transmission
+- **http_request.h**: Request line parsing and validation
+- **http_common.h**: HTTP status codes and common type definitions
+- **string_ops.h**: String and memory operations for HTTP parsing
 
 ## How It Works
 
@@ -158,6 +173,29 @@ HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>
 - Empty line (carriage return + line feed)
 - Response body: Simple HTML
 
+### Supported Routes
+
+The server implements basic URL routing:
+
+| Route           | Response      | Status |
+| --------------- | ------------- | ------ |
+| `/`             | Home page     | 200 OK |
+| `/hello`        | Hello message | 200 OK |
+| `*` (any other) | 404 Not Found | 404    |
+
+### HTTP Status Codes
+
+Supported status codes defined in `http_common.h`:
+
+```c
+typedef enum http_status {
+    HTTP_RES_OK = 200,
+    HTTP_RES_INTERNAL_SERVER_ERR = 500,
+    HTTP_RES_BAD_REQUEST = 400,
+    HTTP_RES_NOT_FOUND = 404,
+} http_status;
+```
+
 ### Socket Options
 
 - `SO_REUSEADDR`: Allows rapid server restarts by reusing the listening port
@@ -168,13 +206,56 @@ HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>
 
 ## Compilation Flags
 
-| Flag | Purpose |
-|------|---------|
-| `-Wall` | Enable all common compiler warnings |
-| `-Wextra` | Enable extra compiler warnings |
-| `-std=c17` | Use C17 standard |
-| `-g` | Include debugging symbols |
-| `-lm` | Link math library (included for compatibility) |
+| Flag       | Purpose                                        |
+| ---------- | ---------------------------------------------- |
+| `-Wall`    | Enable all common compiler warnings            |
+| `-Wextra`  | Enable extra compiler warnings                 |
+| `-std=c17` | Use C17 standard                               |
+| `-g`       | Include debugging symbols                      |
+| `-lm`      | Link math library (included for compatibility) |
+
+## Performance Benchmarking
+
+### Siege Load Testing Results
+
+The server was benchmarked using [Siege](https://www.joedog.org/), a regression testing and load testing utility:
+
+```bash
+siege -b http://127.0.0.1:8000/hello
+```
+
+**Results:**
+
+```json
+{
+	"transactions": 300683,
+	"availability": 99.65,
+	"elapsed_time": 32.24,
+	"data_transferred": 6.31,
+	"response_time": 0.0,
+	"transaction_rate": 9326.4,
+	"throughput": 0.2,
+	"concurrency": 24.44,
+	"successful_transactions": 300683,
+	"failed_transactions": 1048,
+	"longest_transaction": 0.68,
+	"shortest_transaction": 0.0
+}
+```
+
+**Performance Metrics:**
+
+| Metric                     | Value     |
+| -------------------------- | --------- |
+| **Transactions/sec**       | 9,326.40  |
+| **Availability**           | 99.65%    |
+| **Avg Response Time**      | 0.00 sec  |
+| **Data Transferred**       | 6.31 MB   |
+| **Elapsed Time**           | 32.24 sec |
+| **Concurrent Connections** | 24.44     |
+| **Longest Transaction**    | 0.68 sec  |
+
+The server successfully handled over 300,000 transactions with a 99.65% success rate, demonstrating solid performance characteristics for a single-threaded HTTP server.
 
 ## Limitations
 
