@@ -258,13 +258,45 @@ siege -b http://127.0.0.1:8000/hello
 
 The server successfully handled over 300,000 transactions with a 99.65% success rate, demonstrating solid performance characteristics for a single-threaded HTTP server.
 
+## File Serving
+
+The server now includes file serving capabilities through the `stat.h` module:
+
+### File Metadata Retrieval
+
+The `fs_get_metadata()` function retrieves file information:
+
+```c
+typedef struct {
+    bool exists;
+    ssize_t file_size;
+} fs_metadata;
+
+fs_metadata fs_get_metadata(string_view filename);
+```
+
+This function:
+- Validates filename length and buffer constraints
+- Uses POSIX `stat()` to retrieve file metadata
+- Returns file existence and size information
+- Safely handles `string_view` pointer arithmetic (`end - start`)
+
+### Usage
+
+```c
+string_view filename = {.start = "/path/to/file", .end = "/path/to/file" + 13};
+fs_metadata meta = fs_get_metadata(filename);
+if (meta.exists) {
+    printf("File size: %ld bytes\n", meta.file_size);
+}
+```
+
 ## Limitations
 
 - **Single-threaded**: Handles one client at a time sequentially
 - **Hardcoded response**: Always returns the same "Hello, World!" message
 - **HTTP/1.0 only**: No support for HTTP/1.1 features like keep-alive
 - **No SSL/TLS**: Communication is unencrypted
-- **No static file serving**: Cannot serve files from the filesystem
 
 ## Development & Extension
 
@@ -303,6 +335,19 @@ Remove compiled objects and executable:
 ```bash
 make clean
 ```
+
+## Recent Changes
+
+### File Serving Support (Latest)
+
+- **Added `stat.h` module** for file metadata retrieval
+- **Implemented `fs_get_metadata()` function** to safely access file information using POSIX `stat()`
+- **Fixed `string_view` pointer arithmetic** in `stat.h`:
+  - Changed from incorrect `filename.len` to correct `filename.end - filename.start`
+  - This properly calculates the length when `string_view` uses `start` and `end` pointers instead of a dedicated length field
+  - Added semicolon to complete `memcpy` statement
+
+These changes enable the server to retrieve file metadata (existence and size) for future file serving capabilities.
 
 ## License
 
