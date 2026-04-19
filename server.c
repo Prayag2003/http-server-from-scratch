@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include "utils/string_ops.h"
 #include "utils/http_types.h"
+#include "utils/stat.h"
 
 #define CRLF "\r\n"
 #define SPACE " "
@@ -76,25 +77,26 @@ ssize_t handle_client_connection(int client_socket)
         string home = string_from_cstr("/");
         if (strings_equal(req_line.uri, home))
         {
-            http_send_response(
-                client_socket,
-                http_response_generate(buf, sizeof(buf), HTTP_RES_OK, route_hello.len),
-                route_hello);
-        }
-        else if (strings_equal(req_line.uri, route_hello))
-        {
-            http_send_response(
-                client_socket,
-                http_response_generate(buf, sizeof(buf), HTTP_RES_OK, response_from_server.len),
-                response_from_server);
+            if (!http_send_response(
+                    client_socket,
+                    http_response_generate(buf, sizeof(buf), HTTP_RES_OK, route_hello.len),
+                    route_hello))
+            {
+                printf("Failed to send response for route %.*s\n", (int)home.len, home.data);
+                return -1;
+            };
         }
         else
         {
             printf("Unknown route requested: %.*s\n", (int)req_line.uri.len, req_line.uri.data);
-            http_send_response(
-                client_socket,
-                http_response_generate(buf, sizeof(buf), HTTP_RES_NOT_FOUND, response_404.len),
-                response_404);
+            if (!http_send_response(
+                    client_socket,
+                    http_response_generate(buf, sizeof(buf), HTTP_RES_NOT_FOUND, response_404.len),
+                    response_404))
+            {
+                printf("Failed to send 404 response\n");
+                return -1;
+            }
         }
 
         (void)
@@ -119,6 +121,16 @@ int main()
     int client_socket = 0;
     struct sockaddr_in bind_addr;
     int optionsEnabled = 1;
+
+    const char *web_root = "./www";
+    printf("Web root directory: %s\n", web_root);
+
+    fs_metadata web_root_metadata = fs_get_metadata(string_to_view(string_from_cstr(web_root)));
+    if (!web_root_metadata.exists)
+    {
+        fprintf(stderr, "Web root directory '%s' does not exist. Creating it now.\n", web_root);
+        mkdir(web_root, 0300);
+    }
 
     memset(&bind_addr, 0, sizeof(bind_addr));
 
