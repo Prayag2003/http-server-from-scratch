@@ -8,6 +8,7 @@
 #include "utils/string_ops.h"
 #include "utils/http_types.h"
 #include "utils/stat.h"
+#include <fcntl.h>
 
 #define CRLF "\r\n"
 #define SPACE " "
@@ -16,6 +17,9 @@ bool http_serve_file(int client_socket, string filename)
 {
     FILE *file;
     char buf[PATH_MAX];
+    string header;
+    bool return_value = false;
+    int in_fd = -1;
 
     fs_metadata metadata = fs_get_metadata(string_to_view(filename));
     if (!metadata.exists)
@@ -24,44 +28,65 @@ bool http_serve_file(int client_socket, string filename)
             client_socket,
             http_response_generate(NULL, 0, HTTP_RES_NOT_FOUND, 0),
             string_from_cstr("Error 404: Not Found"));
-        return false;
+        return_value = true;
+        goto cleanup;
     }
 
     memset(buf, 0, sizeof(buf));
     memcpy(buf, filename.data, filename.len);
 
-    file = fopen(filename.data, "rb");
-    if (!file)
+    header = http_response_generate(buf, sizeof(buf), HTTP_RES_OK, metadata.file_size);
+
+    ssize_t n = send(socket, header.data, header.len, MSG_MORE);
+    if (n < 0)
     {
-        fprintf(stderr, "Failed to open file '%.*s'\n", (int)filename.len, filename.data);
-        (void)http_send_response(
+        perror("Failed to send response header\n");
+        return_value = false;
+        goto cleanup;
+    }
+    if (n == 0)
+    {
+        fprintf(stderr, "send() returned 0 while sending response header\n");
+        return_value = false;
+        goto cleanup;
+    }
+
+    in_fd = open(buf, O_RDONLY);
+    if (in_fd < 0)
+    {
+        http_send_response(
             client_socket,
             http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
             string_from_cstr("Error 500: Internal Server Error"));
+        perror("Failed to open file for reading\n");
         goto cleanup;
-        return false;
     }
 
-    char *file_buf = (char *)malloc(metadata.file_size);
-    if (!file_buf)
+    // Use sendfile(2) to send the file without using userspace buffers for efficiency, we save the overhead of copying file contents into user space and then back to kernel space for sending over the socket.
+    ssize_t result = 0;
+    int sent = 0;
+
+    while (sent < metadata.file_size)
     {
-        fprintf(stderr, "Failed to allocate memory for file buffer\n");
-        (void)http_send_response(
-            client_socket,
-            http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
-            string_from_cstr("Error 500: Internal Server Error"));
-        goto cleanup;
-        return false;
+        result = sendfile(client_socket, in_fd, NULL, metadata.file_size - sent);
+        if (result < 0)
+        {
+            printf("Failed to send file contents for %s\n", buf);
+            http_send_response(
+                client_socket,
+                http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
+                string_from_cstr("Error 500: Internal Server Error"));
+            return_value = false;
+            goto cleanup;
+        }
+        sent += result;
     }
-
-    // READ file contents into buffer
-    ssize_t n = fread(file_buf, 1, metadata.file_size, file);
 
 cleanup:
     close(file);
-    free(file_buf);
-
-    return true;
+    if (in_fd != -1)
+        close(in_fd);
+    return return_value;
 }
 
 /**
@@ -133,14 +158,6 @@ ssize_t handle_client_connection(int client_socket)
             if (!http_serve_file(client_socket, string_from_cstr("index.html")))
             {
                 printf("Failed to serve index.html for route %.*s\n", (int)root_route.len, root_route.data);
-                return -1;
-            };
-            if (!http_send_response(
-                    client_socket,
-                    http_response_generate(buf, sizeof(buf), HTTP_RES_OK, route_hello.len),
-                    route_hello))
-            {
-                printf("Failed to send response for route %.*s\n", (int)root_route.len, root_route.data);
                 return -1;
             };
         }
