@@ -25,7 +25,8 @@ This project implements a basic HTTP/1.0 web server using POSIX socket APIs. It 
 ### Clone the Repository
 
 ```bash
-cd /Users/prayag/dev/http-server
+git clone https://github.com/Prayag2003/http-server-from-scratch
+cd http-server-from-scratch
 ```
 
 ### Build the Server
