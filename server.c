@@ -12,6 +12,58 @@
 #define CRLF "\r\n"
 #define SPACE " "
 
+bool http_serve_file(int client_socket, string filename)
+{
+    FILE *file;
+    char buf[PATH_MAX];
+
+    fs_metadata metadata = fs_get_metadata(string_to_view(filename));
+    if (!metadata.exists)
+    {
+        (void)http_send_response(
+            client_socket,
+            http_response_generate(NULL, 0, HTTP_RES_NOT_FOUND, 0),
+            string_from_cstr("Error 404: Not Found"));
+        return false;
+    }
+
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, filename.data, filename.len);
+
+    file = fopen(filename.data, "rb");
+    if (!file)
+    {
+        fprintf(stderr, "Failed to open file '%.*s'\n", (int)filename.len, filename.data);
+        (void)http_send_response(
+            client_socket,
+            http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
+            string_from_cstr("Error 500: Internal Server Error"));
+        goto cleanup;
+        return false;
+    }
+
+    char *file_buf = (char *)malloc(metadata.file_size);
+    if (!file_buf)
+    {
+        fprintf(stderr, "Failed to allocate memory for file buffer\n");
+        (void)http_send_response(
+            client_socket,
+            http_response_generate(NULL, 0, HTTP_RES_INTERNAL_SERVER_ERR, 0),
+            string_from_cstr("Error 500: Internal Server Error"));
+        goto cleanup;
+        return false;
+    }
+
+    // READ file contents into buffer
+    ssize_t n = fread(file_buf, 1, metadata.file_size, file);
+
+cleanup:
+    close(file);
+    free(file_buf);
+
+    return true;
+}
+
 /**
  * handle_client_connection: Process incoming client connection
  * @client_socket: File descriptor of the connected client socket
@@ -74,15 +126,21 @@ ssize_t handle_client_connection(int client_socket)
         }
 
         string route_hello = string_from_cstr("/hello");
-        string home = string_from_cstr("/");
-        if (strings_equal(req_line.uri, home))
+        string root_route = string_from_cstr("/");
+
+        if (strings_equal(req_line.uri, root_route))
         {
+            if (!http_serve_file(client_socket, string_from_cstr("index.html")))
+            {
+                printf("Failed to serve index.html for route %.*s\n", (int)root_route.len, root_route.data);
+                return -1;
+            };
             if (!http_send_response(
                     client_socket,
                     http_response_generate(buf, sizeof(buf), HTTP_RES_OK, route_hello.len),
                     route_hello))
             {
-                printf("Failed to send response for route %.*s\n", (int)home.len, home.data);
+                printf("Failed to send response for route %.*s\n", (int)root_route.len, root_route.data);
                 return -1;
             };
         }
