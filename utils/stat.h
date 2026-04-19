@@ -9,7 +9,7 @@ typedef struct
     ssize_t file_size;
 } fs_metadata;
 
-fs_metadata fs_get_metadata(string_view filename)
+static inline fs_metadata fs_get_metadata(string_view filename)
 {
     char buf[PATH_MAX];
     struct stat st;

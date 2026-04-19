@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -std=c17 -g
 LDFLAGS = -lm
 
 TARGET = server
-SRC = server.c utils/http_response.c
+SRC = server.c utils/http_response.c utils/http_serve.c
 OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)
