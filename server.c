@@ -18,17 +18,17 @@
 ssize_t handle_client_connection(int client_socket)
 {
     ssize_t n = 0;
-    char buffer[4096];
+    char buf[4096];
     // Request line - CRLF - Entity Body - CRLF
-    const char *response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>";
-    const char *response_404 = "HTTP/1.0 404 Not Found\r\n\r\n<h1>Not Found</h1>";
+    string response_from_server = string_from_cstr("<h1>Hello, World!</h1>");
+    string response_404 = string_from_cstr("<h1>404 Not Found!<h1>");
 
     for (;;)
     {
-        memset(buffer, 0, sizeof(buffer));
+        memset(buf, 0, sizeof(buf));
 
         /* Receive incoming data from client socket */
-        n = read(client_socket, buffer, sizeof(buffer) - 1);
+        n = read(client_socket, buf, sizeof(buf) - 1);
         if (n < 0)
         {
             perror("Failed to read the data from the client socket\n");
@@ -40,18 +40,18 @@ ssize_t handle_client_connection(int client_socket)
             return 0;
         }
         printf(" - - - - - - - - - - - - - - - - - - - -\n");
-        printf("REQUEST: \n%s\n", buffer);
+        printf("REQUEST: \n%s\n", buf);
 
         /* Find the first line (request line) terminated by \r\n or \n */
         size_t req_line_len = 0;
         for (size_t i = 0; i < (size_t)n - 1; i++)
         {
-            if (buffer[i] == '\r' && buffer[i + 1] == '\n')
+            if (buf[i] == '\r' && buf[i + 1] == '\n')
             {
                 req_line_len = i;
                 break;
             }
-            if (buffer[i] == '\n')
+            if (buf[i] == '\n')
             {
                 req_line_len = i;
                 break;
@@ -65,7 +65,7 @@ ssize_t handle_client_connection(int client_socket)
         }
 
         http_req_line req_line = http_req_line_init();
-        http_status result = parse_req_line(buffer, req_line_len, &req_line);
+        http_status result = parse_req_line(buf, req_line_len, &req_line);
         if (result != HTTP_RES_OK)
         {
             printf("Failed to parse request line\n");
@@ -76,31 +76,34 @@ ssize_t handle_client_connection(int client_socket)
         string home = string_from_cstr("/");
         if (strings_equal(req_line.uri, home))
         {
-            response_from_server = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>";
+            http_send_response(
+                client_socket,
+                http_response_generate(buf, sizeof(buf), HTTP_RES_OK, route_hello.len),
+                route_hello);
+        }
+        else if (strings_equal(req_line.uri, route_hello))
+        {
+            http_send_response(
+                client_socket,
+                http_response_generate(buf, sizeof(buf), HTTP_RES_OK, response_from_server.len),
+                response_from_server);
         }
         else
         {
-            response_from_server = response_404;
+            printf("Unknown route requested: %.*s\n", (int)req_line.uri.len, req_line.uri.data);
+            http_send_response(
+                client_socket,
+                http_response_generate(buf, sizeof(buf), HTTP_RES_NOT_FOUND, response_404.len),
+                response_404);
         }
 
-        (void)write(client_socket, response_from_server, strlen(response_from_server));
-        close(client_socket);
+        (void)
+            close(client_socket);
         break;
     }
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
     return 0;
-}
-
-ssize_t http_response_generate(char *buf, size_t buf_len, http_status status, size_t body_len)
-{
-    int n = 0;
-    memset(buf, 0, sizeof(buf));
-
-    n = sprintf(buf, "%s %s %s" CRLF, "HTTP/1.0", status, http_status_to_str(status));
-    n = sprintf(buf + n, "Content-Length: %zu" CRLF, body_len);
-    n = sprintf(buf + n, CRLF);
-    return buf;
 }
 
 /**
