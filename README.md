@@ -102,6 +102,22 @@ HTTP/1.0 200 OK
 <h1>Hello, World!</h1>
 ```
 
+## Screenshots and Demonstrations
+
+### 01_strace_executable.png
+
+![strace output showing system calls](assets/01_strace_executable.png)
+
+This screenshot displays system call tracing using `strace` while the server is running. It demonstrates:
+
+- **Socket operations**: `accept()` receiving client connections
+- **File operations**: `newfilestat()`, `openat()`, and `sendfile()` system calls for file serving
+- **I/O operations**: `read()` and `write()` calls for receiving HTTP requests and sending responses
+- **HTTP handling**: Full HTTP request parsing showing headers like `User-Agent`, `Accept-Encoding`, and various browser-specific headers
+- **Advanced file operations**: `sendfile()` system call for efficient file transmission to clients
+
+The strace output shows the server processing a GET request from a Chrome browser and efficiently serving files using the `sendfile()` system call.
+
 ## Project Structure
 
 ```
@@ -109,14 +125,17 @@ http-server/
 ├── Makefile                    # Build configuration and targets
 ├── README.md                   # Project documentation
 ├── server.c                    # Main HTTP server implementation
-├── assets/                     # Static assets
-│   └── 00_server_responds_200.png
+├── assets/                     # Static assets and screenshots
+│   ├── 00_server_responds_200.png
+│   ├── 01_strace_executable.png      # System call tracing demonstration
+│   └── 02_server_response.png        # Web interface and performance metrics
 └── utils/                      # HTTP library utilities
     ├── http_common.h           # Common HTTP types and enums
     ├── http_request.h          # HTTP request parsing
     ├── http_response.h         # HTTP response generation (header + declarations)
     ├── http_response.c         # HTTP response implementation
     ├── string_ops.h            # String manipulation utilities
+    ├── stat.h                  # File metadata retrieval
     └── http_types.h            # Convenience header including all types
 ```
 
