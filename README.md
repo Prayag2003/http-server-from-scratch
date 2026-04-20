@@ -295,6 +295,7 @@ fs_metadata fs_get_metadata(string_view filename);
 ```
 
 This function:
+
 - Validates filename length and buffer constraints
 - Uses POSIX `stat()` to retrieve file metadata
 - Returns file existence and size information
@@ -362,9 +363,9 @@ make clean
 - **Added `stat.h` module** for file metadata retrieval
 - **Implemented `fs_get_metadata()` function** to safely access file information using POSIX `stat()`
 - **Fixed `string_view` pointer arithmetic** in `stat.h`:
-  - Changed from incorrect `filename.len` to correct `filename.end - filename.start`
-  - This properly calculates the length when `string_view` uses `start` and `end` pointers instead of a dedicated length field
-  - Added semicolon to complete `memcpy` statement
+     - Changed from incorrect `filename.len` to correct `filename.end - filename.start`
+     - This properly calculates the length when `string_view` uses `start` and `end` pointers instead of a dedicated length field
+     - Added semicolon to complete `memcpy` statement
 
 These changes enable the server to retrieve file metadata (existence and size) for future file serving capabilities.
 
@@ -374,6 +375,8 @@ This project is provided as-is for educational purposes.
 
 ## References
 
+- [RFC 1945 for HTTP 1.0](https://datatracker.ietf.org/doc/html/rfc1945)
+- [RFC 2616 for HTTP 1.1](https://datatracker.ietf.org/doc/html/rfc2616)
 - [POSIX Socket Programming](https://man7.org/linux/man-pages/man7/socket.7.html)
 - [HTTP/1.0 Specification](https://tools.ietf.org/html/rfc1945)
 - [C Standard Library](https://en.cppreference.com/w/c)
