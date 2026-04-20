@@ -113,14 +113,17 @@ ssize_t handle_client_connection(int client_socket)
  */
 int main()
 {
-    int ret = 0;
-    int rc = 0;
+    //  - - - Declarations and initializations - - -
+    int exit_code = 0;
     int tcp_socket = 0;
-    int ls = 0;
+    int bind_result = 0;
     int client_socket = 0;
+    int listen_result = 0;
+    int reuseaddr_enabled = 1;
     struct sockaddr_in bind_addr;
-    int optionsEnabled = 1;
+    const int LISTENER_PORT = 8000;
 
+    // - - - Ensure web root directory exists - - -
     const char *web_root = "./www";
     printf("Web root directory: %s\n", web_root);
 
@@ -133,8 +136,11 @@ int main()
 
     memset(&bind_addr, 0, sizeof(bind_addr));
 
-    /* Create TCP socket (AF_INET=IPv4, SOCK_STREAM=TCP) */
-    tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+    /* Create TCP socket */
+    tcp_socket = socket(
+        AF_INET,     // IPv4
+        SOCK_STREAM, // TCP socket
+        0);
 
     if (tcp_socket < 0)
     {
@@ -144,27 +150,31 @@ int main()
 
     printf("Socket created successfully, fd = %d\n", tcp_socket);
 
-    (void)setsockopt(tcp_socket, SOL_SOCKET, SO_REUSEADDR, &optionsEnabled, sizeof(optionsEnabled));
+    /* Set socket options to allow address reuse */
+    (void)setsockopt(
+        tcp_socket, SOL_SOCKET,
+        SO_REUSEADDR,
+        &reuseaddr_enabled, sizeof(reuseaddr_enabled));
 
     /* Configure socket address for binding to port 8000 */
-    bind_addr.sin_family = AF_INET;         /* IPv4 */
-    bind_addr.sin_port = htons(8000);       /* Port 8000 */
-    bind_addr.sin_addr.s_addr = INADDR_ANY; /* Listen on all interfaces */
+    bind_addr.sin_family = AF_INET;            /* IPv4 */
+    bind_addr.sin_port = htons(LISTENER_PORT); /* Port 8000 */
+    bind_addr.sin_addr.s_addr = INADDR_ANY;    /* Listen on all interfaces */
 
-    rc = bind(tcp_socket, (const struct sockaddr *)&bind_addr, sizeof(bind_addr));
-    if (rc < 0)
+    bind_result = bind(tcp_socket, (const struct sockaddr *)&bind_addr, sizeof(bind_addr));
+    if (bind_result < 0)
     {
         perror("Failed to bind the socket\n");
-        ret = 1;
+        exit_code = 1;
         goto exit;
     }
 
     /* Mark socket as passive to accept incoming connections */
-    ls = listen(tcp_socket, SOMAXCONN);
-    if (ls < 0)
+    listen_result = listen(tcp_socket, SOMAXCONN);
+    if (listen_result < 0)
     {
         perror("Failed to create the listener\n");
-        ret = 1;
+        exit_code = 1;
         goto exit;
     }
     printf("Listener succeeded\n");
@@ -177,14 +187,14 @@ int main()
         if (client_socket < 0)
         {
             perror("Failed to create the client connection\n");
-            ret = 1;
+            exit_code = 1;
             goto exit;
         }
         printf("Received a connection %d\n", client_socket);
-        rc = handle_client_connection(client_socket);
+        bind_result = handle_client_connection(client_socket);
     }
 
 exit:
     close(tcp_socket);
-    return ret;
+    return exit_code;
 }
