@@ -83,6 +83,9 @@ bool http_serve_file(int client_socket, string filename)
         sent += result;
     }
 
+    /* File served successfully */
+    return_value = true;
+
 cleanup:
     if (in_fd != -1)
         close(in_fd);

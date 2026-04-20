@@ -77,11 +77,27 @@ ssize_t handle_client_connection(int client_socket)
         }
 
         string root_route = string_from_cstr("/");
+        string assets_prefix = string_from_cstr("/assets/");
+
         if (strings_equal(req_line.uri, root_route))
         {
             if (!http_serve_file(client_socket, string_from_cstr("./www/index.html")))
             {
                 printf("Failed to serve index.html for route %.*s\n", (int)root_route.len, root_route.data);
+                return -1;
+            };
+        }
+        else if (req_line.uri.len > assets_prefix.len &&
+                 strncmp(req_line.uri.data, assets_prefix.data, assets_prefix.len) == 0)
+        {
+            /* Serve static files from /assets/ */
+            char asset_path[PATH_MAX];
+            memset(asset_path, 0, sizeof(asset_path));
+            snprintf(asset_path, sizeof(asset_path), ".%.*s", (int)req_line.uri.len, req_line.uri.data);
+
+            if (!http_serve_file(client_socket, string_from_cstr(asset_path)))
+            {
+                printf("Failed to serve asset %s\n", asset_path);
                 return -1;
             };
         }

@@ -125,6 +125,18 @@
             margin-bottom: 8px;
         }
 
+        .screenshots {
+            margin-top: 40px;
+        }
+
+        .screenshots img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin: 20px 0;
+        }
+
         footer {
             margin-top: 40px;
             padding-top: 20px;
@@ -180,6 +192,11 @@
                 <li><code>/hello</code> - Hello page</li>
                 <li>All other paths return 404</li>
             </ul>
+        </div>
+
+        <div class="screenshots">
+            <h3 style="color: #667eea; margin-bottom: 15px;">System Execution Trace</h3>
+            <img src="../assets/01_strace_executable.png" alt="strace output showing server execution">
         </div>
 
         <footer>
