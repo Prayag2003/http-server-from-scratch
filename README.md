@@ -4,13 +4,16 @@ A lightweight, single-threaded HTTP server written in C that demonstrates fundam
 
 ## Overview
 
-This project implements a basic HTTP/1.0 web server using POSIX socket APIs. It listens for incoming connections on port 8000 and responds with a simple HTML response. The server is designed for educational purposes and as a foundation for understanding network programming concepts.
+This project implements a lightweight HTTP/1.1 web server using POSIX socket APIs. It listens for incoming connections on port 8000 and responds with dynamic HTML content. The server supports HTTP/1.1 persistent connections, enabling multiple requests over a single TCP connection. The server is designed for educational purposes and as a foundation for understanding modern HTTP protocol implementation and network programming concepts.
 
 ## Features
 
-- **Simple HTTP/1.0 Server**: Implements basic HTTP protocol compliance
+- **HTTP/1.1 Server**: Implements HTTP/1.1 with persistent connection support
+- **Persistent Connections**: Reuses TCP connections for multiple HTTP requests, improving performance
 - **TCP Socket Programming**: Uses standard POSIX socket APIs (`socket`, `bind`, `listen`, `accept`)
-- **Multiple Connection Handling**: Accepts sequential client connections in a loop
+- **Connection Management**: Handles multiple sequential client connections with proper HTTP/1.1 semantics
+- **File Serving**: Serves static files from the web root directory
+- **Dynamic Routing**: Supports multiple URL routes with appropriate HTTP status codes
 - **Clean C Code**: Well-documented with modern C standards (C17) and compiler flags
 
 ## Prerequisites
@@ -87,22 +90,47 @@ Listener succeeded
 Waiting for connection
 Received a connection 4
  - - - - - - - - - - - - - - - - - - - -
-Buffer => GET / HTTP/1.1
-Host: localhost:8000
-...
- - - - - - - - - - - - - - - - - - - - -
+Parsed request line: method=GET, uri=/, version=HTTP/1.1
+Connection closed gracefully
+```
+
+With HTTP/1.1 persistent connections, you may see multiple requests on the same connection:
+
+```
+Parsed request line: method=GET, uri=/, version=HTTP/1.1
+Parsed request line: method=GET, uri=/assets/01_strace_executable.png, version=HTTP/1.1
+Parsed request line: method=GET, uri=/hello, version=HTTP/1.1
 Connection closed gracefully
 ```
 
 The client will receive:
 
 ```
-HTTP/1.0 200 OK
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 21
 
 <h1>Hello, World!</h1>
 ```
 
 ## Screenshots and Demonstrations
+
+### HTTP/1.0 vs HTTP/1.1 Comparison
+
+| Aspect                   | HTTP/1.0                                                    | HTTP/1.1                                                          |
+| ------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| **Screenshot**           | ![HTTP/1.0 request handling](assets/03_sending_http1.0.png) | ![HTTP/1.1 persistent connections](assets/04_sending_http1.1.png) |
+| **Connection Model**     | Single request per TCP connection                           | Multiple requests per persistent TCP connection                   |
+| **Connection Overhead**  | New socket accept and setup for each request                | One socket setup, multiple requests on same connection            |
+| **Request Processing**   | Full connection teardown between requests                   | Connection remains open for sequential requests                   |
+| **Performance**          | Higher latency due to connection overhead                   | Lower latency with connection reuse                               |
+| **System Calls**         | More accept(), close() calls per request                    | Fewer system calls overall                                        |
+| **Resource Utilization** | Less efficient, more file descriptors consumed              | More efficient, better resource reuse                             |
+| **Keep-Alive Support**   | Limited or no persistent connection support                 | Full support for `Connection: keep-alive` and request pipelining  |
+| **Use Case**             | Simple clients, HTTP/1.0 only browsers                      | Modern browsers, typical web clients                              |
+| **Advantage**            | Simplicity, guaranteed isolation                            | Performance, efficiency, modern compliance                        |
+
+**Impact**: The HTTP/1.1 upgrade results in fewer system calls, reduced latency, and better resource utilization, as demonstrated by the increased number of requests handled within a single connection.
 
 ### 01_strace_executable.png
 
@@ -116,7 +144,7 @@ This screenshot displays system call tracing using `strace` while the server is 
 - **HTTP handling**: Full HTTP request parsing showing headers like `User-Agent`, `Accept-Encoding`, and various browser-specific headers
 - **Advanced file operations**: `sendfile()` system call for efficient file transmission to clients
 
-The strace output shows the server processing a GET request from a Chrome browser and efficiently serving files using the `sendfile()` system call.
+The strace output shows the server processing requests and efficiently serving files using the `sendfile()` system call.
 
 ## Project Structure
 
@@ -185,13 +213,31 @@ The `handle_client_connection()` function:
 
 ### HTTP Response Format
 
+HTTP/1.1 Response:
+
 ```
-HTTP/1.0 200 OK\r\n\r\n<h1>Hello, World!</h1>
+HTTP/1.1 200 OK\r\n
+Content-Type: text/html\r\n
+Content-Length: 21\r\n
+\r\n
+<h1>Hello, World!</h1>
 ```
 
-- Status line: `HTTP/1.0 200 OK`
-- Empty line (carriage return + line feed)
-- Response body: Simple HTML
+**Response Components:**
+
+- Status line: `HTTP/1.1 200 OK` (indicating HTTP/1.1 protocol compliance)
+- Headers:
+     - `Content-Type`: Specifies the response body format (e.g., `text/html`)
+     - `Content-Length`: Indicates the size of the response body in bytes
+- Empty line (carriage return + line feed) separating headers from body
+- Response body: HTML content or file data
+
+**HTTP/1.1 Advantages:**
+
+- **Persistent Connections**: Supports connection reuse via `Connection: keep-alive`
+- **Content Length**: Enables proper message framing for persistent connections
+- **Request Pipelining**: Clients can send multiple requests before receiving all responses
+- **Better Caching**: Improved cache control headers and semantics
 
 ### Supported Routes
 
