@@ -135,7 +135,7 @@ void *handle_client_connection(void *client_socket_ptr)
         close(client_socket);
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
-    pthread_exit((void *)(intptr_t)result);
+    return (void *)(intptr_t)result;
 }
 
 /**
