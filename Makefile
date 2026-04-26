@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c17 -g
+CFLAGS = -Wall -Wextra -std=c17 -g -Werror -pthread 
 LDFLAGS = -lm
 
 TARGET = server

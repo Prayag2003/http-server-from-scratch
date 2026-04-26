@@ -4,14 +4,14 @@ A lightweight, single-threaded HTTP server written in C that demonstrates fundam
 
 ## Overview
 
-This project implements a lightweight HTTP/1.1 web server using POSIX socket APIs. It listens for incoming connections on port 8000 and responds with dynamic HTML content. The server supports HTTP/1.1 persistent connections, enabling multiple requests over a single TCP connection. The server is designed for educational purposes and as a foundation for understanding modern HTTP protocol implementation and network programming concepts.
+This project implements a lightweight HTTP/1.1 web server using POSIX socket APIs. It listens for incoming connections on port 8000 and responds with dynamic HTML content. The server uses HTTP/1.1 protocol with explicit connection closure for reliable behavior across different clients. Each request receives a complete response followed by connection termination to prevent client hang states and ensure predictable behavior.
 
 ## Features
 
-- **HTTP/1.1 Server**: Implements HTTP/1.1 with persistent connection support
-- **Persistent Connections**: Reuses TCP connections for multiple HTTP requests, improving performance
+- **HTTP/1.1 Server**: Implements HTTP/1.1 protocol with proper headers and status codes
+- **Reliable Connection Handling**: Sends explicit `Connection: close` header to prevent client confusion
 - **TCP Socket Programming**: Uses standard POSIX socket APIs (`socket`, `bind`, `listen`, `accept`)
-- **Connection Management**: Handles multiple sequential client connections with proper HTTP/1.1 semantics
+- **Connection Management**: Properly handles connection lifecycle with clean termination
 - **File Serving**: Serves static files from the web root directory
 - **Dynamic Routing**: Supports multiple URL routes with appropriate HTTP status codes
 - **Clean C Code**: Well-documented with modern C standards (C17) and compiler flags
@@ -94,12 +94,13 @@ Parsed request line: method=GET, uri=/, version=HTTP/1.1
 Connection closed gracefully
 ```
 
-With HTTP/1.1 persistent connections, you may see multiple requests on the same connection:
+Each new browser request will create a new connection:
 
 ```
+Waiting for connection
+Received a connection 5
+ - - - - - - - - - - - - - - - - - - - -
 Parsed request line: method=GET, uri=/, version=HTTP/1.1
-Parsed request line: method=GET, uri=/assets/01_strace_executable.png, version=HTTP/1.1
-Parsed request line: method=GET, uri=/hello, version=HTTP/1.1
 Connection closed gracefully
 ```
 
@@ -107,11 +108,13 @@ The client will receive:
 
 ```
 HTTP/1.1 200 OK
-Content-Type: text/html
 Content-Length: 21
+Connection: close
 
 <h1>Hello, World!</h1>
 ```
+
+The `Connection: close` header informs the browser that the server will close the connection after sending the response, preventing infinite loading states.
 
 ## Screenshots and Demonstrations
 
@@ -217,8 +220,8 @@ HTTP/1.1 Response:
 
 ```
 HTTP/1.1 200 OK\r\n
-Content-Type: text/html\r\n
 Content-Length: 21\r\n
+Connection: close\r\n
 \r\n
 <h1>Hello, World!</h1>
 ```
@@ -227,17 +230,25 @@ Content-Length: 21\r\n
 
 - Status line: `HTTP/1.1 200 OK` (indicating HTTP/1.1 protocol compliance)
 - Headers:
-     - `Content-Type`: Specifies the response body format (e.g., `text/html`)
      - `Content-Length`: Indicates the size of the response body in bytes
+     - `Connection: close`: Signals the client that the server will close the connection after sending the response
 - Empty line (carriage return + line feed) separating headers from body
 - Response body: HTML content or file data
 
-**HTTP/1.1 Advantages:**
+**Connection Management:**
 
-- **Persistent Connections**: Supports connection reuse via `Connection: keep-alive`
-- **Content Length**: Enables proper message framing for persistent connections
-- **Request Pipelining**: Clients can send multiple requests before receiving all responses
-- **Better Caching**: Improved cache control headers and semantics
+The server sends `Connection: close` header for each response to ensure proper connection termination. This is important because:
+
+- **Client Clarity**: Explicitly tells the browser when to expect the connection to close
+- **Prevents Hanging**: Prevents clients from waiting indefinitely for more data or requests
+- **Single Request Per Connection**: Currently, the server handles one request per connection and closes it, simplifying the implementation
+- **Reliable Behavior**: Ensures consistent behavior across different browsers and HTTP clients
+
+**HTTP/1.1 Features:**
+
+- **HTTP/1.1 Protocol**: Uses HTTP/1.1 status line and headers for compliance
+- **Content Length**: Proper message framing with Content-Length header
+- **Clean Termination**: Connection: close header ensures proper connection closure without ambiguity
 
 ### Supported Routes
 
