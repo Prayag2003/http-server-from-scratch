@@ -11,7 +11,7 @@ string http_response_generate(char *buf, size_t buf_len, http_status status, siz
     response.len = 0;
     memset(buf, 0, buf_len);
 
-    response.len += sprintf(buf, "%s %d %s" CRLF, "HTTP/1.0", status, http_status_to_str(status));
+    response.len += sprintf(buf, "%s %d %s" CRLF, "HTTP/1.1", status, http_status_to_str(status));
     response.len += sprintf(buf + response.len, "Content-Length: %zu" CRLF, body_len);
     response.len += sprintf(buf + response.len, CRLF);
     response.data = buf;
