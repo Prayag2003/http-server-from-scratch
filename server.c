@@ -135,7 +135,7 @@ void *handle_client_connection(void *client_socket_ptr)
         close(client_socket);
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
-    pthread_exit((void *)result);
+    pthread_exit((void *)(intptr_t)result);
 }
 
 /**
@@ -153,6 +153,10 @@ int main()
     int reuseaddr_enabled = 1;
     struct sockaddr_in bind_addr;
     const int LISTENER_PORT = 8000;
+    pthread_t *threads = NULL;
+    size_t thread_count = 0;
+    size_t thread_capacity = 10;
+    threads = calloc(thread_capacity, sizeof(pthread_t));
 
     // - - - Ensure web root directory exists - - -
     const char *web_root = "./www";
@@ -210,11 +214,6 @@ int main()
     }
     printf("Listener succeeded\n");
 
-    pthread_t *threads = NULL;
-    size_t thread_count = 0;
-    size_t thread_capacity = 10;
-    threads = calloc(thread_capacity, sizeof(pthread_t));
-
     /* Accept and handle incoming client connections */
     for (;;)
     {
@@ -260,7 +259,7 @@ exit:
     printf("Waiting for all threads to complete...\n");
     for (size_t i = 0; i < thread_count; i++)
     {
-        pthread_kill(threads[i], NULL);
+        pthread_join(threads[i], NULL);
     }
     if (threads)
     {
