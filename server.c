@@ -1,21 +1,25 @@
-#include <stdio.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <limits.h>
 #include <stdbool.h>
-#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* POSIX and system headers */
+#include <arpa/inet.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <signal.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <limits.h>
-#include <stdint.h>
-#include <pthread.h>
-#include "utils/string_ops.h"
-#include "utils/http_types.h"
+#include <unistd.h>
+
+/* Utils */
 #include "utils/http_serve.h"
+#include "utils/http_types.h"
 #include "utils/stat.h"
+#include "utils/string_ops.h"
 
 #define CRLF "\r\n"
 #define SPACE " "
