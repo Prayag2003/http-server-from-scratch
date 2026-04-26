@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <limits.h>
+#include <stdint.h>
+#include <pthread.h>
 #include "utils/string_ops.h"
 #include "utils/http_types.h"
 #include "utils/http_serve.h"
@@ -21,8 +23,9 @@
  * handle_client_connection: Process incoming client connection
  * @client_socket: File descriptor of the connected client socket
  */
-ssize_t handle_client_connection(int client_socket)
+void *handle_client_connection(void *client_socket_ptr)
 {
+    int client_socket = (int)(intptr_t)client_socket_ptr;
     ssize_t n = 0;
     int result = 0;
     char buf[4096];
@@ -130,7 +133,7 @@ ssize_t handle_client_connection(int client_socket)
         close(client_socket);
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
-    return result;
+    return (void *)(intptr_t)result;
 }
 
 /**
@@ -216,8 +219,20 @@ int main()
             exit_code = 1;
             goto exit;
         }
+
         printf("Received a connection %d\n", client_socket);
-        bind_result = handle_client_connection(client_socket);
+
+        pthread_t thread;
+        bind_result = pthread_create(&thread, NULL, handle_client_connection, (void *)(intptr_t)client_socket);
+
+        if (bind_result != 0)
+        {
+            perror("Failed to create thread for client connection\n");
+            exit_code = 1;
+            goto exit;
+        }
+
+        // bind_result = handle_client_connection(client_socket);
     }
 
 exit:
