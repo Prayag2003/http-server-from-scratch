@@ -24,6 +24,7 @@
 ssize_t handle_client_connection(int client_socket)
 {
     ssize_t n = 0;
+    int result = 0;
     char buf[4096];
     string response_404 = string_from_cstr("<h1>404 Not Found!<h1>");
 
@@ -36,15 +37,16 @@ ssize_t handle_client_connection(int client_socket)
         if (n < 0)
         {
             perror("Failed to read the data from the client socket\n");
-            return -1;
+            result = -1;
+            break;
         }
         if (n == 0)
         {
             printf("Connection closed gracfully\n");
-            return 0;
+            break;
         }
         printf(" - - - - - - - - - - - - - - - - - - - -\n");
-        printf("REQUEST: \n%s\n", buf);
+        // printf("REQUEST: \n%s\n", buf);
 
         /* Find the first line (request line) terminated by \r\n or \n */
         size_t req_line_len = 0;
@@ -65,15 +67,22 @@ ssize_t handle_client_connection(int client_socket)
         if (req_line_len == 0)
         {
             printf("Invalid HTTP request, could not find request line terminator\n");
-            return -1;
+            result = -1;
+            break;
         }
 
         http_req_line req_line = http_req_line_init();
         http_status result = parse_req_line(buf, req_line_len, &req_line);
+
+        printf("Parsed request line: method=%.*s, uri=%.*s, version=%.*s\n",
+               (int)req_line.method.len, req_line.method.data,
+               (int)req_line.uri.len, req_line.uri.data,
+               (int)req_line.version.len, req_line.version.data);
+
         if (result != HTTP_RES_OK)
         {
             printf("Failed to parse request line\n");
-            return -1;
+            break;
         }
 
         string root_route = string_from_cstr("/");
@@ -84,7 +93,8 @@ ssize_t handle_client_connection(int client_socket)
             if (!http_serve_file(client_socket, string_from_cstr("./www/index.html")))
             {
                 printf("Failed to serve index.html for route %.*s\n", (int)root_route.len, root_route.data);
-                return -1;
+                result = -1;
+                break;
             };
         }
         else if (req_line.uri.len > assets_prefix.len &&
@@ -98,7 +108,8 @@ ssize_t handle_client_connection(int client_socket)
             if (!http_serve_file(client_socket, string_from_cstr(asset_path)))
             {
                 printf("Failed to serve asset %s\n", asset_path);
-                return -1;
+                result = -1;
+                break;
             };
         }
         else
@@ -110,17 +121,16 @@ ssize_t handle_client_connection(int client_socket)
                     response_404))
             {
                 printf("Failed to send 404 response\n");
-                return -1;
+                result = -1;
+                break;
             }
         }
-
-        (void)
-            close(client_socket);
-        break;
     }
+    (void)
+        close(client_socket);
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
-    return 0;
+    return result;
 }
 
 /**

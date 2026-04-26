@@ -2,3 +2,4 @@ server
 server.o
 *.out
 *.exe
+*.o
