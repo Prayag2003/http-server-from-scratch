@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -31,6 +32,7 @@ void *handle_client_connection(void *client_socket_ptr)
     char buf[4096];
     string response_404 = string_from_cstr("<h1>404 Not Found!<h1>");
 
+    printf("- - - - - - - - - - New Connection - - - - - - - - - -\n");
     for (;;)
     {
         memset(buf, 0, sizeof(buf));
@@ -48,7 +50,6 @@ void *handle_client_connection(void *client_socket_ptr)
             printf("Connection closed gracfully\n");
             break;
         }
-        printf(" - - - - - - - - - - - - - - - - - - - -\n");
         // printf("REQUEST: \n%s\n", buf);
 
         /* Find the first line (request line) terminated by \r\n or \n */
@@ -129,11 +130,12 @@ void *handle_client_connection(void *client_socket_ptr)
             }
         }
     }
+    printf("Closing connection %d\n", client_socket);
     (void)
         close(client_socket);
     printf(" - - - - - - - - - - - - - - - - - - - -\n");
 
-    return (void *)(intptr_t)result;
+    pthread_exit((void *)result);
 }
 
 /**
@@ -208,6 +210,11 @@ int main()
     }
     printf("Listener succeeded\n");
 
+    pthread_t *threads = NULL;
+    size_t thread_count = 0;
+    size_t thread_capacity = 10;
+    threads = calloc(thread_capacity, sizeof(pthread_t));
+
     /* Accept and handle incoming client connections */
     for (;;)
     {
@@ -223,19 +230,42 @@ int main()
         printf("Received a connection %d\n", client_socket);
 
         pthread_t thread;
+        // bind_result = handle_client_connection(client_socket);
         bind_result = pthread_create(&thread, NULL, handle_client_connection, (void *)(intptr_t)client_socket);
-
         if (bind_result != 0)
         {
             perror("Failed to create thread for client connection\n");
-            exit_code = 1;
-            goto exit;
+            continue;
         }
 
-        // bind_result = handle_client_connection(client_socket);
+        threads[thread_count++] = thread;
+        if (thread_count + 1 > thread_capacity)
+        {
+            thread_capacity *= 2;
+            pthread_t *new_threads = realloc(threads, thread_capacity * sizeof(pthread_t));
+            if (!new_threads)
+            {
+                /* Thread is still running, just not tracked. Reset count to avoid overflow. */
+                fprintf(stderr, "Warning: Failed to reallocate threads array, but server continues\n");
+                thread_count = 0;
+            }
+            else
+            {
+                threads = new_threads;
+            }
+        }
     }
 
 exit:
+    printf("Waiting for all threads to complete...\n");
+    for (size_t i = 0; i < thread_count; i++)
+    {
+        pthread_kill(threads[i], NULL);
+    }
+    if (threads)
+    {
+        free(threads);
+    }
     close(tcp_socket);
     return exit_code;
 }
